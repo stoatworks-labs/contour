@@ -921,7 +921,7 @@ std::vector< double > statedWeights( double sigma )
 int runWidth( int width, int height, int perturb = 0, bool quiet = false )
 {
 	int failures = 0;
-	for( const float smooth : { 0.0f, 0.35f } )
+	for( const float smooth : { 0.0f, 0.5f } )
 	{
 		Baseline b;
 		b.smooth     = smooth;
@@ -988,7 +988,7 @@ int runWidth( int width, int height, int perturb = 0, bool quiet = false )
 		}
 		const bool spans = maxSlope >= 8.0 * minSlope * ( 1.0 - 1e-12 );
 		failures += report( measured >= 10 && indexSeen >= 2 && spans && worstRatio <= 1.0, quiet,
-		                    "width: Smooth %.2f: %d contours (%d index) on slopes %.2f:1, line widths %.4f..%.4f px (stated %.2f), worst error %.2e against its tol %.2e",
+		                    "width: Smooth %.2f: %d contours (%d index) on slopes %.2f:1, line widths %.4f..%.4f px (stated %.2f); the closest to its bound: %.2e against %.2e",
 		                    smooth, measured, indexSeen, maxSlope / std::max( minSlope, 1e-12 ), minW, maxW, w, worstErr, worstTol );
 	}
 	return failures;
