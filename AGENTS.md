@@ -409,7 +409,8 @@ by hand.
 - **The guard's constant is a judgement** — "one code value over eight pixels" is
   argued, not measured on real 8-bit footage; and it is per pixel, so the look changes
   with raster (see the guard).
-- **The Windows build is CI-only** and CI cannot run yet.
+- **Windows has only met Arena on software rendering**: v0.1.0's CI build in the
+  fleet gate on win-lab (Arena 7.27.1, llvmpipe). See the README's status.
 - **Not verified at 4K**, only benchmarked there.
 - **No OpenFX port and no browser demo.** Not required for 0.1.0.
 - **`StoatworksAbout.h` and `ATTRIBUTIONS.md` are provisional hand copies** with

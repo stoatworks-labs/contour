@@ -11,7 +11,8 @@
 > sea covers exactly the pixels below sea level and the shoreline sits on that isoline; a
 > noisy plateau lying exactly on a contour level draws nothing — with sixteen negative
 > controls that prove each check can fail, and one mutation of the shipped GLSL that two
-> of them catch. It has **never been loaded into Resolume**. It is loaded by
+> of them catch. It has **never been loaded into Resolume on macOS**; on Windows it passed the
+> fleet Arena gate. On macOS it is loaded by
 > [oxbow](https://github.com/stoatworks-labs/oxbow), which is a real FFGL host and is not
 > Resolume. See [Status](#status).
 
@@ -109,12 +110,11 @@ Render cost at the defaults, best of three runs of 60 frames after a warm-up,
 
 ### Not established
 
-It has **never been loaded into Resolume**, on either platform. Everything above was
+It has **never been loaded into Resolume on macOS**. Everything above was
 compiled, rendered and measured offline against the real plugin class in a headless
 CGL context, plus an `oxbow` load. How it looks on real footage, how 30 controls read
-in Arena's inspector, and what Resolume's FFT bins actually carry are untested. The
-Windows build is CI-only and has never run. No OpenFX port, no browser demo and no
-factory presets, none in scope for 0.1.0. No user guide.
+in Arena's inspector, and what Resolume's FFT bins actually carry are untested. On Windows, v0.1.0's CI build passed the fleet Arena gate 9 of 9 on win-lab (Resolume Arena 7.27.1, Mesa llvmpipe, no GPU, 2026-09-24): it loads from Extra Effects, registers as `SW Contour` / `CN01` / effect, all 37 host controls match the declaration, every control but the four audio ones moves the picture, it renders and Arena's log stays clean. The audio controls were skipped, because win-lab has no sound device. Software rendering says nothing about a GPU or about speed. No OpenFX port, no browser demo and no
+factory presets, none in scope for 0.1.0. There is a [user guide](https://stoatworks-labs.com/software/contour/guide/).
 
 ## Build
 
