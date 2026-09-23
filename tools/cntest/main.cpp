@@ -548,6 +548,9 @@ std::vector< float > terrain( int width, int height, const std::function< double
 /// shoreline, no audio rise, no mix. Each check moves what it is about.
 struct Baseline
 {
+	float source      = 1.0f;//Red
+	float heightScale = 0.5f;//1
+	float invert      = 0.0f;
 	float smooth     = 0.0f;
 	float interval   = 0.5f; //1/16
 	float lineWidth  = 0.3f; //1.2 px
@@ -568,9 +571,9 @@ struct Baseline
 
 void apply( Contour& p, const Baseline& b )
 {
-	set( p, "Height Source", 1.0f );
-	set( p, "Height Scale", 0.5f );
-	set( p, "Invert", 0.0f );
+	set( p, "Height Source", b.source );
+	set( p, "Height Scale", b.heightScale );
+	set( p, "Invert", b.invert );
 	set( p, "Smooth", b.smooth );
 	set( p, "Interval", b.interval );
 	set( p, "Index Every", b.indexEvery );
@@ -723,16 +726,21 @@ int runCount( int width, int height, int perturb = 0, bool quiet = false )
 	//apart, on opposite sides of 1/2 -- so the boundary rule is exercised
 	//both ways (+0 and +1), and levels at ( k + 1/2 ) I would count one
 	//more or one fewer, never the same.
-	const double cases[][ 2 ] = { { 7.0, 0.25 }, { 9.5, 0.75 }, { 12.25, 0.25 }, { 16.0, 0.75 }, { 6.5, 0.25 } };
+	//The last two at Height Scale 0.75 and 0.25 (elevation 1.5 and 0.5 times
+	//the channel): the picture carries h / scale, the plugin multiplies back.
+	const double cases[][ 3 ] = { { 7.0, 0.25, 0.5 }, { 9.5, 0.75, 0.5 }, { 12.25, 0.25, 0.5 }, { 16.0, 0.75, 0.5 },
+		                          { 6.5, 0.25, 0.5 }, { 11.0, 0.75, 0.75 }, { 8.5, 0.25, 0.25 } };
 	int done = 0;
 	for( const auto& c : cases )
 	{
+		b.heightScale       = static_cast< float >( c[ 2 ] );
+		const double hscale = stated::scale( b.heightScale );
 		const int N     = static_cast< int >( std::floor( ( width - 1 ) / c[ 0 ] ) );
 		const double s  = ( width - 1 ) / ( N + 0.5 );
 		const double g  = I / s;
 		const double h0 = ( 1.0 + c[ 1 ] ) * I;
 		const double hEnd = h0 + g * ( width - 1 );
-		std::vector< float > img = terrain( width, height, [ & ]( int x, int ) { return h0 + g * x; } );
+		std::vector< float > img = terrain( width, height, [ & ]( int x, int ) { return ( h0 + g * x ) / hscale; } );
 
 		//Stated count and the precondition.
 		int expected = 0;
@@ -768,10 +776,10 @@ int runCount( int width, int height, int perturb = 0, bool quiet = false )
 		}
 		++done;
 		failures += report( all && rule == expected, quiet,
-		                    "count: spacing %6.3f px, R/I = %6.3f: %d contours crossed, stated %d (floor(R/I) = %d, +%d by the boundary rule)",
-		                    s, R / I, worstRow, expected, floorRI, rule - floorRI );
+		                    "count: spacing %6.3f px, R/I = %6.3f, Height Scale x%.2f: %d contours crossed, stated %d (floor(R/I) = %d, +%d by the boundary rule)",
+		                    s, R / I, hscale, worstRow, expected, floorRI, rule - floorRI );
 	}
-	failures += report( done >= 3, quiet, "count: %d ramps met the precondition (a stroke and a pixel clear of both ends)", done );
+	failures += report( done >= 5, quiet, "count: %d ramps met the precondition (a stroke and a pixel clear of both ends)", done );
 	return failures;
 }
 
@@ -1173,6 +1181,69 @@ int runSea( int width, int height, int perturb = 0, bool quiet = false )
 				                    "sea: shoreline %.1f px, isoline running %s at +%.2f px: stroke centred %+.2e px off (tol %.2e; spec 0.5)",
 				                    ws, alongX ? "north-south" : "east-west ", phase, off, tol );
 			}
+
+	//Height Source and Invert, read through the same stroke: a ramp in ONE
+	//channel, the others 0, so the elevation is that channel times its Rec.
+	//709 weight (Luma) or one minus it (Invert). The shoreline then lands
+	//where the stated weight puts the sea level, which a weight wrong in its
+	//fourth figure moves by more than the tolerance: the ramp is gentle
+	//(1/512 of elevation a pixel, twice the guard) and the stroke 3 px wide,
+	//an integer, so the lattice contributes nothing.
+	{
+		struct Case
+		{
+			const char* what;
+			int channel;
+			double weight;
+			bool invert;
+		};
+		const Case cases[] = { { "Luma, red only  ", 0, 0.2126, false },
+			                   { "Luma, green only", 1, 0.7152, false },
+			                   { "Luma, blue only ", 2, 0.0722, false },
+			                   { "Red, inverted   ", 0, 1.0, true } };
+		for( const Case& c : cases )
+		{
+			Baseline b;
+			b.source     = c.invert ? 1.0f : 0.0f;
+			b.invert     = c.invert ? 1.0f : 0.0f;
+			b.contours   = 0.0f;
+			b.seaLevel   = 0.03f;
+			b.shoreWidth = 0.5f;//3 px
+			b.water[ 0 ] = b.water[ 1 ] = b.water[ 2 ] = 1.0f;
+			const double S  = static_cast< float >( stated::seaLevel( b.seaLevel, stated::scale( 0.5 ) ) );
+			const double ws = stated::shoreWidth( b.shoreWidth );
+			const double g  = 1.0 / 512.0;//elevation per pixel
+			const double xs = std::floor( 0.5 * width ) + 0.37;
+			//Elevation e( x ) = S + g ( x - xs ); the channel that makes it.
+			auto channel = [ & ]( int x ) {
+				const double e = S + g * ( x - xs );
+				return c.invert ? 1.0 - e : e / c.weight;
+			};
+			std::vector< float > img( static_cast< size_t >( width ) * height * 4, 0.0f );
+			for( int r = 0; r < height; ++r )
+				for( int x = 0; x < width; ++x )
+				{
+					float* px = img.data() + ( static_cast< size_t >( r ) * width + x ) * 4;
+					px[ c.channel ] = static_cast< float >( channel( x ) );
+					px[ 3 ]         = 1.0f;
+				}
+			std::vector< float > out;
+			if( !renderTerrain( width, height, b, perturb, img, out ) )
+				return failures + 1;
+			const std::vector< Run > runs = runsOf( inkRow( out, width, height / 2, 0, 0.6 ) );
+			//Only the stroke's pixels and their neighbours can move it, and
+			//their elevation is within ws + 4 px of S. The dot product rounds
+			//each of its three terms and its sum: four ulps of that
+			//elevation, over the slope, on top of the rest.
+			const double hLocal = S + g * ( ws + 4.0 );
+			const double eps    = distanceEps( hLocal, g, 0.5 * ws + 1.0 ) + 4.0 * ulpf( 1.0 ) / 0.6 + 4.0 * ulpf( hLocal ) / g;
+			const double tol = latticeCentroidBound( ws ) + floatCentroidBound( ws, eps );
+			const bool one   = runs.size() == 1;
+			const double off = one ? runs[ 0 ].centroid - xs : 1e9;
+			failures += report( one && std::fabs( off ) <= tol, quiet, "sea: Height Source %s: the shoreline %+.2e px from where weight %.4f puts it (tol %.2e)",
+			                    c.what, off, c.weight, tol );
+		}
+	}
 	return failures;
 }
 
