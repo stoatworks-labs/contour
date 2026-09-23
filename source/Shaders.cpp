@@ -172,10 +172,16 @@ void main()
 	int Y = int( gl_FragCoord.y ) - VpY;
 	ivec2 p = ivec2( ( ( 2 * X + 1 ) * HWidth ) / ( 2 * VpW ), ( ( 2 * Y + 1 ) * HHeight ) / ( 2 * VpH ) );
 
-	//--- the ground, and its slope in elevation per pixel, north up.
-	float h = heightAt( p );
-	vec2 g  = 0.5 * vec2( heightAt( p + ivec2( 1, 0 ) ) - heightAt( p - ivec2( 1, 0 ) ),
-	                      heightAt( p + ivec2( 0, 1 ) ) - heightAt( p - ivec2( 0, 1 ) ) );
+	//--- the ground, and its slope in elevation per pixel, north up: a
+	//central difference, one-sided on the frame's edge columns and rows (a
+	//clamped central difference there would halve the slope and double the
+	//width of any line crossing the edge).
+	float h   = heightAt( p );
+	ivec2 lo  = max( p - ivec2( 1 ), ivec2( 0 ) );
+	ivec2 hi  = min( p + ivec2( 1 ), ivec2( HWidth - 1, HHeight - 1 ) );
+	vec2 span = vec2( max( hi - lo, ivec2( 1 ) ) );
+	vec2 g    = vec2( heightAt( ivec2( hi.x, p.y ) ) - heightAt( ivec2( lo.x, p.y ) ),
+	                  heightAt( ivec2( p.x, hi.y ) ) - heightAt( ivec2( p.x, lo.y ) ) ) / span;
 	float slope = length( g );
 
 	//--- the guard.
