@@ -27,7 +27,7 @@ jobs:
         # break is not architecture-specific.
         #
         # CONTOUR_BUILD_TOOLS is ON here where the release build turns it
-        # OFF: cntest is the only place the conversion is written down as a
+        # OFF: cntest is the only place the map is written down as a
         # number, so compiling and running it is most of the value.
         run: >
           cmake -B build
@@ -51,11 +51,12 @@ jobs:
           tools/check-shaders.sh build/cntest
 
       - name: Offline
-        # --offline is every check that needs no GL -- the model's arithmetic
-        # against the stated geometry and kernels, a six-day host clock, the
-        # names -- and their negative controls. It is defined in cntest's
-        # main(), not listed here, so a new check cannot be silently left
-        # out, and it says loudly what it did not run.
+        # --offline is every check that needs no GL -- the control mappings
+        # against the README, the sea's audio detector (primed, its gain and
+        # releases), a six-day host clock, the names -- and their negative
+        # controls. It is defined in cntest's main(), not listed here, so a
+        # new check cannot be silently left out, and it says loudly what it
+        # did not run.
         timeout-minutes: 10
         run: ./build/cntest --offline
 
@@ -63,14 +64,15 @@ jobs:
         # If the runner can make a software 4.1 context these run at 320x180,
         # the raster verify.sh also runs locally; if it cannot, --allow-no-gl
         # turns the failure into a loud SKIP rather than a red build that says
-        # nothing about the plugin. Every check reads the store with integer
-        # texelFetch and weights computed on the CPU, so nothing in them
-        # depends on a rasteriser's uv or a texture unit's filtering; they
-        # always run on the dev Mac, in tools/verify.sh, at 1280x720 as well.
+        # nothing about the plugin. Every read is an integer texelFetch and
+        # every tolerance is derived from the lattice, a float ULP or the
+        # GLSL spec's precision (AGENTS.md, "Would this hold on another
+        # rasteriser"); they always run on the dev Mac, in tools/verify.sh,
+        # at 1280x720 as well.
         timeout-minutes: 25
         run: >
-          ./build/cntest --weights --judder --lines --same --mc --resize --negative
-          --size 320x180 --allow-no-gl
+          ./build/cntest --count --spacing --width --hillshade --sea --index --flat
+          --audio --resize --negative --size 320x180 --allow-no-gl
 
       - name: Controls
         # At 160x90 and two at a time, because a software rasteriser is slow
