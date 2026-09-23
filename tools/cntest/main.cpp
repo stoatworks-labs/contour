@@ -1961,7 +1961,7 @@ int runBench( const std::vector< std::string >& settings, int frames )
 		const double hv = benchAt( heavy, size.width, size.height, frames );
 		std::printf( "%s    %7.3f        %5.1f%%             %7.3f\n", size.name, ms, ms / 16.667 * 100.0, hv );
 	}
-	std::printf( "\nThree passes at the defaults (height, two blur axes of radius 6, the map).\n"
+	std::printf( "\nThree passes at the defaults (height, two blur axes of radius 12, the map).\n"
 	             "Smooth at its maximum makes the blur 97 taps an axis.\n" );
 	return 0;
 }

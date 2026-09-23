@@ -72,7 +72,7 @@ Contour::Contour()
 	params[ PT_HEIGHT_SOURCE ] = static_cast< float >( controls::kSourceLuma );
 	params[ PT_HEIGHT_SCALE ]  = 0.5f; //1
 	params[ PT_INVERT ]        = 0.0f;
-	params[ PT_SMOOTH ]        = 0.35f;//sigma 1.96 px
+	params[ PT_SMOOTH ]        = 0.5f; //sigma 4 px: an 8-bit gentle slope reads as terraces through the hillshade below that
 
 	params[ PT_INTERVAL ]    = 0.45f;//0.0506
 	params[ PT_INDEX_EVERY ] = 5.0f;
