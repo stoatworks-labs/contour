@@ -15,6 +15,8 @@
 #                 strings `cntest --dump-shaders` writes; and does any of
 #                 them declare a GLSL reserved word as a name (glslc is
 #                 optional, so this half runs without it).
+#   demo          the browser demo's copy of every shader is still the
+#                 plugin's, character for character (demo/tools/check_shaders.py).
 #   offline       the checks that need no GL, and their negative controls:
 #                   --controls  every control mapping against the README
 #                   --detector  the sea's audio detector: primed, its gain,
@@ -96,6 +98,23 @@ if [ -z "$reserved" ]; then
 else
 	fail "a reserved word is declared as a name:"
 	printf '      %s\n' "$reserved"
+fi
+
+step "demo: the browser copy of the shaders"
+# demo/plugin.js cannot include a C++ file, so it carries its own copy of every
+# shader, and two copies drift quietly: the plugin keeps working, the page keeps
+# working, and they stop being the same effect. Character for character --
+# reformatting counts. It says nothing about the page's PORT of the CPU half;
+# only a reader checks that.
+if [ -f demo/tools/check_shaders.py ]; then
+	if out=$(python3 demo/tools/check_shaders.py 2>&1); then
+		pass "$( printf '%s\n' "$out" | tail -1 )"
+	else
+		fail "the demo's shaders have drifted from source/Shaders.cpp"
+		printf '%s\n' "$out" | tail -12
+	fi
+else
+	printf '   skipped: no demo/\n'
 fi
 
 step "offline (no GL)"

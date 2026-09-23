@@ -339,7 +339,8 @@ uncommitted beside it, and was committed next as 833133c. Shaders.cpp was revert
   clips, every Bass and Synth loop among them, into a near-solid sea. 0.05 keeps land
   on typical dark footage; the checks set their own sea level and did not move.)
 - **Paper and Mix**: the map is opaque on paper; Mix < 1 blends it over the clip.
-- **No factory presets, no OpenFX, no browser demo** — not in the spec for 0.1.0.
+- **No factory presets, no OpenFX** — not in the spec for 0.1.0. The browser demo
+  came after the release; see *The browser demo*.
 - **`--pipe` feeds no spectrum**; `--out` and the sweep feed the card's own.
 - **The FFGL submodule is dissociated** (repacked, alternates removed) rather than
   borrowing tinsel's object store through `--reference`.
@@ -412,10 +413,44 @@ by hand.
 - **Windows has only met Arena on software rendering**: v0.1.0's CI build in the
   fleet gate on win-lab (Arena 7.27.1, llvmpipe). See the README's status.
 - **Not verified at 4K**, only benchmarked there.
-- **No OpenFX port and no browser demo.** Not required for 0.1.0.
+- **No OpenFX port.** Not required for 0.1.0. The browser demo has no audio, so
+  its sea never rises; see *The browser demo*.
 - **`StoatworksAbout.h` and `ATTRIBUTIONS.md` are provisional hand copies** with
   `guide=""`; register the project and re-run the syncs before the first release.
 - **Nothing has been through a show.**
+
+---
+
+## The browser demo
+
+`demo/` is the page at **contour-demo.stoatworks-labs.com**, a static-assets
+Worker deployed from `wrangler.toml` with `cf-run npx wrangler deploy` (no build
+step; what is committed is what is served). `demo/vendor/` is the shared kit from
+`stoatworks-backend/resolume-demo/` and is not edited here.
+
+The page runs the plugin's four shaders, copied across unedited:
+`demo/tools/check_shaders.py` compares them with `source/Shaders.cpp` character
+for character and `tools/verify.sh` fails if one drifts. The arithmetic around
+them is a hand port — every conversion in `Controls.cpp`, `uploadWeights`, the
+light vector and uniforms from `ProcessOpenGL`, `SeaDrive` and `Clock` — and
+nothing checks a port but a reader. The ground is R32F, as in the plugin.
+
+What the page does differently, all of it said on the page:
+
+- **No audio.** A browser page gets no Resolume FFT. The ported `SeaDrive` is fed
+  no bins, which it reads exactly as the plugin reads an unrouted input:
+  silence, a drive of 0, the sea at Sea Level. Audio Rise, Audio Mode and Audio
+  Band are present with their own defaults and do nothing, and their hints say
+  so. The FFT buffer is not a control a host draws and has no row.
+- **Index Every is a dropdown** of its nine values, because the kit has no
+  integer control (galvo's answer).
+- The About block is absent, as on every page in the suite.
+
+Decided without asking, for the page: Sea Level's default is read from the
+current constructor (0.05, not the pre-release 0.2); `SeaDrive` is ported and
+fed silence rather than replaced by a constant, so the page does what the plugin
+does; and the presets are the page's own (the plugin ships none), expressed
+entirely in its parameters.
 
 ---
 

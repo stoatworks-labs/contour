@@ -113,8 +113,11 @@ Render cost at the defaults, best of three runs of 60 frames after a warm-up,
 It has **never been loaded into Resolume on macOS**. Everything above was
 compiled, rendered and measured offline against the real plugin class in a headless
 CGL context, plus an `oxbow` load. How it looks on real footage, how 30 controls read
-in Arena's inspector, and what Resolume's FFT bins actually carry are untested. On Windows, v0.1.0's CI build passed the fleet Arena gate 9 of 9 on win-lab (Resolume Arena 7.27.1, Mesa llvmpipe, no GPU, 2026-09-24): it loads from Extra Effects, registers as `SW Contour` / `CN01` / effect, all 37 host controls match the declaration, every control but the four audio ones moves the picture, it renders and Arena's log stays clean. The audio controls were skipped, because win-lab has no sound device. Software rendering says nothing about a GPU or about speed. No OpenFX port, no browser demo and no
-factory presets, none in scope for 0.1.0. There is a [user guide](https://stoatworks-labs.com/software/contour/guide/).
+in Arena's inspector, and what Resolume's FFT bins actually carry are untested. On Windows, v0.1.0's CI build passed the fleet Arena gate 9 of 9 on win-lab (Resolume Arena 7.27.1, Mesa llvmpipe, no GPU, 2026-09-24): it loads from Extra Effects, registers as `SW Contour` / `CN01` / effect, all 37 host controls match the declaration, every control but the four audio ones moves the picture, it renders and Arena's log stays clean. The audio controls were skipped, because win-lab has no sound device. Software rendering says nothing about a GPU or about speed. No OpenFX port and no
+factory presets, neither in scope for 0.1.0. There is a [user guide](https://stoatworks-labs.com/software/contour/guide/). The
+[browser demo](https://contour-demo.stoatworks-labs.com/) runs the plugin's own
+shaders with its conversions ported to JavaScript; a browser page has no Resolume
+audio, so there the sea never rises and the three audio controls do nothing.
 
 ## Build
 
