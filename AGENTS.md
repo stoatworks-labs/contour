@@ -334,7 +334,10 @@ uncommitted beside it, and was committed next as 833133c. Shaders.cpp was revert
   Onset on Bass — a surge on the kick. The FFT bins are not assumed linear in anything.
 - **Defaults**: Smooth 0.5 (σ 4), Interval 0.45 (0.0506, about twenty lines over the
   range), Index Every 5, lines 1.2 and 2.4 px in brown, Hillshade 0.6 from 315° at 45°,
-  Z 1, Classic tints at 0.6 on cream paper, Sea Level 0.2, Shore 1.5 px.
+  Z 1, Classic tints at 0.6 on cream paper, Sea Level 0.05, Shore 1.5 px.
+  (Sea Level was 0.2 until the release: that floods 18 of Resolume's 33 bundled demo
+  clips, every Bass and Synth loop among them, into a near-solid sea. 0.05 keeps land
+  on typical dark footage; the checks set their own sea level and did not move.)
 - **Paper and Mix**: the map is opaque on paper; Mix < 1 blends it over the clip.
 - **No factory presets, no OpenFX, no browser demo** — not in the spec for 0.1.0.
 - **`--pipe` feeds no spectrum**; `--out` and the sweep feed the card's own.

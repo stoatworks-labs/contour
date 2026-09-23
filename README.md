@@ -21,7 +21,8 @@ Luma read as elevation and drawn as a topographic map — an FFGL effect for
 ![A synthetic terrain drawn as a survey map: two hills ringed by brown contours, closer together on the steep flanks, a heavier index contour every fifth line, hill-shading lit from the upper left, green-to-sand elevation tints, a pale blue sea with a dark shoreline, and a round lake in a hollow](docs/hero.png)
 
 <sub>One frame, rendered by `cntest`, the offline harness — not captured from Resolume.
-The defaults, on the harness's moving terrain card.</sub>
+The defaults with Sea Level raised to 0.2, on the harness's moving terrain
+card.</sub>
 
 ## The one idea
 

@@ -91,7 +91,7 @@ Contour::Contour()
 	params[ PT_TINT_MODE ]     = static_cast< float >( controls::kTintClassic );
 	params[ PT_TINT_STRENGTH ] = 0.6f;
 
-	params[ PT_SEA_LEVEL ]   = 0.2f;
+	params[ PT_SEA_LEVEL ]   = 0.05f;
 	params[ PT_AUDIO_RISE ]  = 0.5f;
 	params[ PT_WATER_R ]     = 0.55f;
 	params[ PT_WATER_G ]     = 0.74f;
