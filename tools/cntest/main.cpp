@@ -828,8 +828,11 @@ int runSpacing( int width, int height, int perturb = 0, bool quiet = false )
 		std::vector< std::pair< double, double > > fit;//( k, centroid )
 		for( const Run& r : runs )
 		{
-			//Runs touching the frame edge are cut, not measured.
-			if( r.first == 0 || r.last == width - 1 )
+			//The first and last columns' slope is a one-sided difference
+			//(the clamp repeats the edge texel), half the true slope, so a
+			//stroke reaching them is cut there: not measured. One that
+			//reaches them always inks its neighbour, so this is the test.
+			if( r.first <= 1 || r.last >= width - 2 )
 				continue;
 			const double k   = std::round( ( r.centroid - x0 ) / c.s );
 			const double pos = x0 + k * c.s;
@@ -1058,13 +1061,23 @@ int runHillshade( int width, int height, int perturb = 0, bool quiet = false )
 		double hmax = c0 + std::fabs( ga ) * width + std::fabs( gb ) * height;
 		const double expected = statedHillshade( lift * ga, lift * gb, stated::azimuth( c.azimuth ), stated::altitude( c.altitude ) );
 		const double tol      = lift * std::sqrt( 2.0 ) * 0.5 * ulpf( hmax ) + 16.0 * std::ldexp( 1.0, -24 );
-		double worst          = 0.0;
-		for( int r = 1; r < height - 1; ++r )
-			for( int x = 1; x < width - 1; ++x )
+		//The border's slope is a one-sided difference over one pixel, not
+		//halved: a full ulp per component there.
+		const double edgeTol = lift * std::sqrt( 2.0 ) * ulpf( hmax ) + 16.0 * std::ldexp( 1.0, -24 );
+		double worst = 0.0, worstEdge = 0.0;
+		for( int r = 0; r < height; ++r )
+			for( int x = 0; x < width; ++x )
+			{
+				const bool border = r == 0 || x == 0 || r == height - 1 || x == width - 1;
 				for( int ch = 0; ch < 3; ++ch )
-					worst = std::max( worst, std::fabs( out[ ( static_cast< size_t >( r ) * width + x ) * 4 + ch ] - expected ) );
-		failures += report( worst <= tol, quiet, "hillshade: slope %4.1f facing %5.1f, light %5.1f at %4.1f, Z %.2f: stated %.6f, worst error %.2e (tol %.2e)",
-		                    c.slopeDeg, c.aspectDeg, stated::azimuth( c.azimuth ), stated::altitude( c.altitude ), Z, expected, worst, tol );
+				{
+					const double e = std::fabs( out[ ( static_cast< size_t >( r ) * width + x ) * 4 + ch ] - expected );
+					( border ? worstEdge : worst ) = std::max( border ? worstEdge : worst, e );
+				}
+			}
+		failures += report( worst <= tol && worstEdge <= edgeTol, quiet,
+		                    "hillshade: slope %4.1f facing %5.1f, light %5.1f at %4.1f, Z %.2f: stated %.6f, worst error %.2e (tol %.2e), on the border %.2e (tol %.2e)",
+		                    c.slopeDeg, c.aspectDeg, stated::azimuth( c.azimuth ), stated::altitude( c.altitude ), Z, expected, worst, tol, worstEdge, edgeTol );
 	}
 	return failures;
 }
@@ -1194,23 +1207,23 @@ int runIndex( int width, int height, int perturb = 0, bool quiet = false )
 		int strokes = 0, expectedStrokes = 0;
 		for( const Run& r : runsOf( inkRow( out, width, height / 2 ) ) )
 		{
-			if( r.first == 0 || r.last == width - 1 )
+			if( r.first <= 1 || r.last >= width - 2 )
 				continue;
 			const int k = 1 + static_cast< int >( std::lround( ( r.centroid - x0 ) / s ) );
 			++strokes;
 			if( r.mass > 0.5 * ( w + wi ) )
 				heavy.insert( k );
 		}
-		//A stroke of width wk puts ink on pixel x iff | x - xk | < ( wk + 1 ) / 2;
-		//one that reaches the first or last pixel is cut, and not counted on
-		//either side.
+		//A stroke of width wk puts ink on pixel x iff | x - xk | < ( wk + 1 ) / 2.
+		//One whose reach includes the first two or last two columns is not
+		//counted on either side: the edge column's slope is one-sided.
 		for( int k = 1;; ++k )
 		{
 			const double xk = x0 + ( k - 1 ) * s;
 			const double wk = k % every == 0 ? wi : w;
 			if( xk > width - 1 )
 				break;
-			if( xk < 0.5 * ( wk + 1.0 ) || ( width - 1 ) - xk < 0.5 * ( wk + 1.0 ) )
+			if( xk - 1.0 < 0.5 * ( wk + 1.0 ) || ( width - 2 ) - xk < 0.5 * ( wk + 1.0 ) )
 				continue;
 			++expectedStrokes;
 			if( k % every == 0 )
@@ -1279,7 +1292,7 @@ int runFlat( int width, int height, int perturb = 0, bool quiet = false )
 	const int edge     = width / 2;
 	const int keep     = radius + 2;//the plateau's interior, clear of the ramp's blur
 
-	for( const double codeValues : { 0.1, 2.0 } )
+	for( const double codeValues : { 2.0, 0.1 } )
 	{
 		const double a     = codeValues / 255.0;
 		const double bound = a * 0.5 * tv * std::sqrt( 2.0 );
