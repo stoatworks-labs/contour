@@ -15,7 +15,7 @@ namespace stoatworks::about
 {
     inline constexpr auto name = "Contour";
     inline constexpr auto slug = "contour";
-    inline constexpr auto hook = "Luma as elevation, drawn as a topographic map, for Resolume";
+    inline constexpr auto hook = "Luma as a topographic map, for Resolume";
     inline constexpr auto licence = "MIT";
     inline constexpr auto guide = "https://stoatworks-labs.com/software/contour/guide/";
     inline constexpr auto page = "https://stoatworks-labs.com/software/contour/";
