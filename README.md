@@ -102,9 +102,9 @@ universal Release build, running every rendered check at **two rasters**, 320×1
 | the bundle | universal (`x86_64 arm64`), exports `plugMain`, ad-hoc signs; `oxbow` reports `SW Contour` / `CN01` / `effect` and renders 120 frames through `plugMain` |
 
 Render cost at the defaults, best of three runs of 60 frames after a warm-up,
-`glFinish` both sides, on a GPU shared with other work: **0.13 ms** at 720p,
-**0.29 ms** at 1080p, **1.33 ms** at 4K. At the most Smooth (σ 16, 97 taps an axis):
-**0.32 ms**, **0.73 ms**, **3.02 ms**. macOS figures only.
+`glFinish` both sides, on a GPU shared with other work: **0.11 ms** at 720p,
+**0.29 ms** at 1080p, **1.28 ms** at 4K. At the most Smooth (σ 16, 97 taps an axis):
+**0.32 ms**, **0.73 ms**, **2.90 ms**. macOS figures only.
 
 ### Not established
 
