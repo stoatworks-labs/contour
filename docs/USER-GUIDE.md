@@ -429,7 +429,10 @@ shaders failed if one did, a buffer that could not be allocated and at what size
 - **Not checked at 4K**, only timed there.
 - **The output is opaque**; the clip's alpha does not pass through at Mix 1.
 - **Never run on Intel**, although the macOS build contains an Intel slice.
-- **No presets**, no OpenFX version and no browser demo.
+- **No presets** and no OpenFX version.
+- **There is a browser demo** at [contour-demo.stoatworks-labs.com](https://contour-demo.stoatworks-labs.com).
+  It is a port to a web page, not the plugin: the shaders run in WebGL2 and any CPU
+  half is rewritten in JavaScript. The page lists what it does not reproduce.
 
 ---
 
