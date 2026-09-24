@@ -90,6 +90,14 @@ sky or a wall. The flip side is that a very gentle gradient carries no lines at 
 until you smooth more. And the ground is the picture's brightness: a bright shirt is a
 hill whether or not it is in front of anything.
 
+[![Contour — your footage as a topographic map, for Resolume](docs/video-thumb.png)](https://www.youtube.com/watch?v=VLTt_QBT2-M)
+
+*[Watch it](https://www.youtube.com/watch?v=VLTt_QBT2-M) — 49 seconds:
+footage as a moving landscape at the defaults, Smooth generalising a busy picture, hill-shading and a turning light, the tint modes, and the sea raised into the low ground until the hills are islands (keyed on the cue sheet, not driven by music). Every frame is the real plugin's output: an FFGL plugin has no window,
+so the footage is rendered by this repository's own offline harness
+(`cntest --pipe`, driven by a cue sheet) rather than filmed off a screen, and
+the clips are Resolume's bundled demo media.*
+
 ## Controls
 
 | Group | |
