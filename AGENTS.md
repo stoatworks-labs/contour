@@ -10,9 +10,9 @@ tell anybody this works.
 
 Luma read as elevation and drawn as a topographic map, as an FFGL 2.1 effect (`CN01`,
 shown as `SW Contour`) for Resolume Arena and Avenue. C++17 + GLSL 4.10, CMake,
-universal macOS `.bundle` and a Windows `.dll`. MIT, intended home
-`github.com/stoatworks-labs/contour`. **Local only at v0.1.0** — no remote, no tag,
-not registered anywhere, never loaded into Resolume.
+universal macOS `.bundle` and a Windows `.dll`. MIT. Public at
+`github.com/stoatworks-labs/contour`, released at v0.1.0 on 2026-09-24. Never loaded
+into Resolume on macOS; on Windows, v0.1.0's CI build passed the fleet Arena gate.
 
 Built 2026-09-23 in one session from the fleet's templates and
 `specs/SPEC-contour.md` (with `BRIEF.md` and `BRIEF-ADDENDUM.md`): standards for the
@@ -344,9 +344,10 @@ uncommitted beside it, and was committed next as 833133c. Shaders.cpp was revert
 - **`--pipe` feeds no spectrum**; `--out` and the sweep feed the card's own.
 - **The FFGL submodule is dissociated** (repacked, alternates removed) rather than
   borrowing tinsel's object store through `--reference`.
-- **Provisional About and attributions** (`StoatworksAbout.h`, `ATTRIBUTIONS.md`) are
-  hand copies adapted from standards' with `guide=""`; the button count, and so the
-  parameter count, does not change when the fleet's sync regenerates them.
+- **About and attributions** (`StoatworksAbout.h`, `ATTRIBUTIONS.md`) began as
+  hand copies adapted from standards' with `guide=""`, and the fleet's sync has
+  generated them since the project was registered; the button count, and so the
+  parameter count, didn't change when it did.
 - **Commit trailers name the model that did the work** (`Claude Opus 5.5`), as the
   session's instructions said, not the brief's `Claude Fable 5.1`.
 
@@ -399,11 +400,13 @@ by hand.
 
 ### Assumed, or not done
 
-- ☠️ **Never loaded into Resolume**, on either platform. Everything was compiled,
+- ☠️ **Never loaded into Resolume on macOS.** On macOS everything was compiled,
   rendered and measured offline against the real plugin class in a headless CGL
-  context, plus an `oxbow` load.
-- **Never seen on real footage.** Every picture so far is synthetic terrain. Whether a
-  face or a crowd reads as a landscape, and what Smooth it needs, is unjudged.
+  context, plus an `oxbow` load. Windows is below.
+- **Only seen on Resolume's demo clips.** Apart from synthetic terrain, the only
+  footage through it is Resolume's 33 bundled demo clips, in the harness, for the
+  release video and the default Sea Level. Whether a face or a crowd reads as a
+  landscape, and what Smooth it needs, is unjudged.
 - **Resolume's FFT bins are unmeasured** (fleet-wide). The Level law √bin and the band
   split are regauss's choices, not measurements; `--audio` proves the plumbing, not the
   musicality.
@@ -415,8 +418,8 @@ by hand.
 - **Not verified at 4K**, only benchmarked there.
 - **No OpenFX port.** Not required for 0.1.0. The browser demo has no audio, so
   its sea never rises; see *The browser demo*.
-- **`StoatworksAbout.h` and `ATTRIBUTIONS.md` are provisional hand copies** with
-  `guide=""`; register the project and re-run the syncs before the first release.
+- **`StoatworksAbout.h` and `ATTRIBUTIONS.md` are generated** by stoatworks-backend's
+  sync-about.py and sync-attributions.py since the project was registered; edit them there.
 - **Nothing has been through a show.**
 
 ---

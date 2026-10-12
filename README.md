@@ -112,7 +112,7 @@ music already playing doesn't flood the map.
 
 ## Status
 
-**v0.1.0, 23 September 2026, and still early days.**
+**v0.1.0, 24 September 2026, and still early days.**
 
 ### Measured offline, on macOS
 
