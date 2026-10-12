@@ -148,7 +148,8 @@ shared with other work). At the most Smooth (σ 16, 97 taps an axis) it's **0.32
 
 It's **never been loaded into Resolume on macOS**. Everything above was compiled,
 rendered and measured offline against the plugin's own class in a headless CGL context,
-plus an `oxbow` load. I haven't tested how it looks on real footage, how the 30 controls
+plus an `oxbow` load. I haven't tested how it looks on real footage beyond Resolume's
+bundled demo clips (put through the harness for the release video), how the 30 controls
 read in Arena's inspector, or what Resolume's FFT bins actually carry.
 
 On Windows, v0.1.0's CI build passed the fleet Arena gate 9 of 9 on win-lab (Resolume
@@ -162,7 +163,8 @@ There's no OpenFX port and there are no factory presets; neither was in scope fo
 There's a [user guide](https://stoatworks-labs.com/software/contour/guide/). The
 [browser demo](https://contour-demo.stoatworks-labs.com/) runs the plugin's own shaders
 with its conversions ported to JavaScript. A browser page has no Resolume audio, so the
-sea never rises there and the three audio controls do nothing.
+sea never rises there and Audio Rise, Audio Mode and Audio Band do nothing (the page has
+no Audio picker).
 
 ## Build
 

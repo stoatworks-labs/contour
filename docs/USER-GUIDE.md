@@ -28,7 +28,7 @@ turns the hollow into a lake.*
 > no ink at all;
 > and sixteen versions of the model, broken on purpose, each fail the check built for them.
 > All 30 controls are shown to change the picture. It's **never been loaded into Resolume on
-> macOS**. The one host it's run in is the fleet's own test host, `oxbow`, for 120 frames.
+> macOS**. On a Mac the one host it's run in is the fleet's own test host, `oxbow`, for 120 frames.
 > On Windows, a build of v0.1.0 loads, registers and renders in Resolume Arena 7.27.1, with every
 > control matching what the plugin declares. That was on software rendering, so it says nothing
 > about a GPU. The four audio controls couldn't be tested there, because that machine has no
@@ -94,7 +94,7 @@ Put SW Contour on a layer with something that has big, soft shapes in it (a face
 gradient, smoke) and leave every control where it is. The defaults are a survey sheet: brown
 contours about every twentieth of the brightness range with every fifth one heavier, a
 hill-shade lit from the upper left, green-to-snow tints on cream paper, and a pale blue sea over
-the darkest fifth of the picture.
+the darkest twentieth of the picture.
 
 Then:
 
@@ -414,11 +414,13 @@ shaders failed if one did, a buffer that couldn't be allocated and at what size,
 
 ## Known limits
 
-- **Never loaded into Resolume on macOS**, and nothing has driven the controls in a host. How
-  the eight groups, the four dropdowns, Index Every, the colour triples and the audio picker
-  present in the inspector is untested.
-- **Never seen on real footage.** Every picture so far is synthetic terrain. Whether a face or a
-  crowd reads as a landscape, and how much Smooth it needs, hasn't been judged yet.
+- **Never loaded into Resolume on macOS**, and on Windows only the fleet's Arena gate has driven
+  the controls in a host. How the eight groups, the four dropdowns, Index Every, the colour
+  triples and the audio picker present in the inspector is untested.
+- **Only seen on Resolume's demo clips.** Apart from synthetic terrain, the only footage through
+  it is Resolume's 33 bundled demo clips, in the offline harness, for the release video and to
+  set the default Sea Level. Whether a face or a crowd reads as a landscape, and how much Smooth
+  it needs, hasn't been judged yet.
 - **The ground is the brightness.** Nothing knows about depth or what's in front of what.
 - **Flat ground has no contour.** Below about one 8-bit step over eight pixels (less with
   Smooth), lines fade out, so a very gentle gradient carries no lines until you smooth more.
