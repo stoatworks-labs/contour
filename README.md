@@ -1,28 +1,23 @@
 # contour
 
 > **AI-assisted project.** This codebase was created with [Claude](https://claude.com/claude-code)
-> (Anthropic), directed and reviewed by a human author. The map is not asserted but
-> measured: an offline harness drives the real plugin class in a headless GL context and
-> reads each claim back out of the picture — a ramp crosses exactly the stated number of
-> contours; adjacent isolines sit interval / slope apart, exactly on whole pixels and
-> within the pixel lattice's own bound on fractional ones; every contour on terrain whose
-> slope spans 8:1 is drawn the same width on the page, to a bound derived per stroke;
-> planes of known slope and aspect shade to the cartographer's closed-form hillshade; the
-> sea covers exactly the pixels below sea level and the shoreline sits on that isoline; a
-> noisy plateau lying exactly on a contour level draws nothing — with sixteen negative
-> controls that prove each check can fail, and one mutation of the shipped GLSL that two
-> of them catch. It has **never been loaded into Resolume on macOS**; on Windows it passed the
-> fleet Arena gate. On macOS it is loaded by
-> [oxbow](https://github.com/stoatworks-labs/oxbow), which is a real FFGL host and is not
-> Resolume. See [Status](#status).
+> (Anthropic), directed and reviewed by a human author. The map is measured rather than
+> asserted, by an offline harness that drives the plugin's own class in a headless GL context
+> and reads each claim back out of the picture, with sixteen negative controls that prove each
+> check can fail and one mutation of the shipped GLSL that two of them catch. It's **never been
+> loaded into Resolume on macOS**; on Windows it passed the fleet Arena gate. On macOS it's
+> loaded by [oxbow](https://github.com/stoatworks-labs/oxbow), which is a proper FFGL host but
+> isn't Resolume. The full rundown is under [Status](#status).
 
-Luma read as elevation and drawn as a topographic map — an FFGL effect for
-[Resolume](https://resolume.com) Arena and Avenue.
+Your footage as a topographic map: an FFGL effect for [Resolume](https://resolume.com) Arena
+and Avenue that reads the picture's brightness as ground height and draws it the way a survey
+map does. Bright things become hills, dark things become valleys, and the music can flood the
+lot.
 
 ![A synthetic terrain drawn as a survey map: two hills ringed by brown contours, closer together on the steep flanks, a heavier index contour every fifth line, hill-shading lit from the upper left, green-to-sand elevation tints, a pale blue sea with a dark shoreline, and a round lake in a hollow](docs/hero.png)
 
-<sub>One frame, rendered by `cntest`, the offline harness — not captured from Resolume.
-The defaults with Sea Level raised to 0.2, on the harness's moving terrain
+<sub>One frame, rendered by `cntest` (the offline harness) rather than captured from
+Resolume. It's the defaults with Sea Level raised to 0.2, on the harness's moving terrain
 card.</sub>
 
 <!-- downloads:start -->
@@ -63,21 +58,21 @@ Treat the picture's brightness as ground height, and draw it the way a survey ma
 **isolines at a fixed interval, heavier index contours, hill-shading from the
 north-west, hypsometric tints, and a sea that the music can raise.**
 
-The mechanism is the cartographer's, and so are the artefacts.
+It works the way a cartographer's map does, artefacts and all.
 
 ## What falls out
 
-None of these is drawn on purpose:
+None of this is put there on purpose:
 
 - **Contours crowd on steep ground and open out on gentle ground.** The spacing of the
   lines is interval / |∇h|. Nothing places them; the spacing *is* the slope.
 - **Every line is one pen width, on a cliff and on a plain.** Each line is drawn from
-  its distance on the page, |h − level| / |∇h|, not from |h − level| alone — which would
+  its distance on the page, |h − level| / |∇h|, not from |h − level| alone, which would
   make it a hairline on a cliff and a smear on a plain. The harness proves the
   difference: take the division out and the check fails by a factor of eight.
 - **Noise makes an unreadable map until the height is generalised.** Survey data has to
-  be smoothed before it is contoured, and so does a picture. Smooth is that step.
-- **The shoreline is simply the isoline at sea level**, so a flood follows the terrain:
+  be smoothed before it's contoured, and so does a picture. Smooth is that step.
+- **The shoreline is just the isoline at sea level**, so a flood follows the terrain:
   raise the sea and it pours into the low ground first and leaves the hills as islands.
 - **Moving footage becomes a moving landscape.**
 
@@ -88,15 +83,16 @@ Flat ground has no contour. Below a slope of one 8-bit code value over eight pix
 rather than by the picture, so contours fade out there instead of scribbling across a
 sky or a wall. The flip side is that a very gentle gradient carries no lines at all
 until you smooth more. And the ground is the picture's brightness: a bright shirt is a
-hill whether or not it is in front of anything.
+hill whether or not it's in front of anything.
 
 [![Contour — your footage as a topographic map, for Resolume](docs/video-thumb.png)](https://www.youtube.com/watch?v=VLTt_QBT2-M)
 
-*[Watch it](https://www.youtube.com/watch?v=VLTt_QBT2-M) — 49 seconds:
-footage as a moving landscape at the defaults, Smooth generalising a busy picture, hill-shading and a turning light, the tint modes, and the sea raised into the low ground until the hills are islands (keyed on the cue sheet, not driven by music). Every frame is the real plugin's output: an FFGL plugin has no window,
-so the footage is rendered by this repository's own offline harness
-(`cntest --pipe`, driven by a cue sheet) rather than filmed off a screen, and
-the clips are Resolume's bundled demo media.*
+*[Watch it](https://www.youtube.com/watch?v=VLTt_QBT2-M) (49 seconds): footage as a moving
+landscape at the defaults, Smooth generalising a busy picture, hill-shading and a turning light,
+the tint modes, and the sea raised into the low ground until the hills are islands (keyed on the
+cue sheet, not driven by music). It's all the plugin's own output. An FFGL plugin doesn't have a
+window to film, so the footage comes from this repo's offline harness (`cntest --pipe`, driven
+by a cue sheet) rather than a screen recording, and the clips are Resolume's bundled demo media.*
 
 ## Controls
 
@@ -112,17 +108,17 @@ the clips are Resolume's bundled demo media.*
 
 With no audio routed the sea stays where Sea Level puts it. The onset detector is primed
 on the first frame and after every jump in the clock, so triggering a clip with the
-music already playing does not flood the map.
+music already playing doesn't flood the map.
 
 ## Status
 
-**v0.1.0, and honestly early — 23 September 2026.**
+**v0.1.0, 23 September 2026, and still early days.**
 
 ### Measured offline, on macOS
 
-`tools/verify.sh` passes on this machine (M4 Max, macOS 26.4.1) against a fresh
-universal Release build, running every rendered check at **two rasters**, 320×180 and
-1280×720; the same checks also pass at 333×187 and 1920×1080. What it establishes:
+`tools/verify.sh` passes on this Mac (M4 Max, macOS 26.4.1) against a fresh universal
+Release build. It runs every rendered check at two rasters, 320×180 and 1280×720, and the
+same checks also pass at 333×187 and 1920×1080. Here's what it shows:
 
 | check | result |
 | --- | --- |
@@ -143,25 +139,34 @@ universal Release build, running every rendered check at **two rasters**, 320×1
 | `--pipe` | 2.5 frames in, exactly 2 out; an unknown cue refused (2); a failed render and a closed stdout each exit 1 |
 | the bundle | universal (`x86_64 arm64`), exports `plugMain`, ad-hoc signs; `oxbow` reports `SW Contour` / `CN01` / `effect` and renders 120 frames through `plugMain` |
 
-Render cost at the defaults, best of three runs of 60 frames after a warm-up,
-`glFinish` both sides, on a GPU shared with other work: **0.11 ms** at 720p,
-**0.29 ms** at 1080p, **1.28 ms** at 4K. At the most Smooth (σ 16, 97 taps an axis):
-**0.32 ms**, **0.73 ms**, **2.90 ms**. macOS figures only.
+Render cost at the defaults is **0.11 ms** at 720p, **0.29 ms** at 1080p and **1.28 ms**
+at 4K (best of three runs of 60 frames after a warm-up, `glFinish` both sides, on a GPU
+shared with other work). At the most Smooth (σ 16, 97 taps an axis) it's **0.32 ms**,
+**0.73 ms** and **2.90 ms**. These are macOS figures only.
 
 ### Not established
 
-It has **never been loaded into Resolume on macOS**. Everything above was
-compiled, rendered and measured offline against the real plugin class in a headless
-CGL context, plus an `oxbow` load. How it looks on real footage, how 30 controls read
-in Arena's inspector, and what Resolume's FFT bins actually carry are untested. On Windows, v0.1.0's CI build passed the fleet Arena gate 9 of 9 on win-lab (Resolume Arena 7.27.1, Mesa llvmpipe, no GPU, 2026-09-24): it loads from Extra Effects, registers as `SW Contour` / `CN01` / effect, all 37 host controls match the declaration, every control but the four audio ones moves the picture, it renders and Arena's log stays clean. The audio controls were skipped, because win-lab has no sound device. Software rendering says nothing about a GPU or about speed. No OpenFX port and no
-factory presets, neither in scope for 0.1.0. There is a [user guide](https://stoatworks-labs.com/software/contour/guide/). The
-[browser demo](https://contour-demo.stoatworks-labs.com/) runs the plugin's own
-shaders with its conversions ported to JavaScript; a browser page has no Resolume
-audio, so there the sea never rises and the three audio controls do nothing.
+It's **never been loaded into Resolume on macOS**. Everything above was compiled,
+rendered and measured offline against the plugin's own class in a headless CGL context,
+plus an `oxbow` load. I haven't tested how it looks on real footage, how the 30 controls
+read in Arena's inspector, or what Resolume's FFT bins actually carry.
+
+On Windows, v0.1.0's CI build passed the fleet Arena gate 9 of 9 on win-lab (Resolume
+Arena 7.27.1, Mesa llvmpipe, no GPU, 2026-09-24): it loads from Extra Effects, registers
+as `SW Contour` / `CN01` / effect, all 37 host controls match the declaration, every
+control but the four audio ones moves the picture, it renders and Arena's log stays
+clean. The audio controls were skipped, because win-lab doesn't have a sound device.
+Software rendering tells you nothing about a GPU or about speed.
+
+There's no OpenFX port and there are no factory presets; neither was in scope for 0.1.0.
+There's a [user guide](https://stoatworks-labs.com/software/contour/guide/). The
+[browser demo](https://contour-demo.stoatworks-labs.com/) runs the plugin's own shaders
+with its conversions ported to JavaScript. A browser page has no Resolume audio, so the
+sea never rises there and the three audio controls do nothing.
 
 ## Build
 
-Needs CMake 3.15+, a C++17 compiler, and the FFGL SDK submodule.
+You'll need CMake 3.15+, a C++17 compiler and the FFGL SDK submodule.
 
 ```bash
 git clone --recursive https://github.com/stoatworks-labs/contour
@@ -176,7 +181,7 @@ macOS builds are universal (Apple Silicon + Intel) by default; add
 
 ## Building and testing
 
-The offline harness renders the real plugin class headlessly:
+The offline harness renders the plugin's own class headless:
 
 ```bash
 ./build/cntest --out /tmp/frame.png --size 1920x1080   # the moving terrain card
@@ -191,8 +196,9 @@ python3 tools/sweep.py                                 # no control is silently 
 tools/verify.sh                                        # all of it, on a fresh universal build
 ```
 
-Every check takes `--size`; run it at 320×180 as well as the raster you care about.
-Footage goes through the real shaders with `--pipe`, in the fleet's frame format:
+Every check takes `--size`, so run it at 320×180 as well as whatever raster you care
+about. Footage goes through the plugin's shaders with `--pipe`, in the fleet's frame
+format:
 
 ```bash
 ffmpeg -i in.mov -f rawvideo -pix_fmt rgba - \
