@@ -445,6 +445,23 @@ FFResult Contour::ProcessOpenGL( ProcessOpenGLStruct* pGL )
 }
 
 //---------------------------------------------------------------------------
+std::vector< float > Contour::ElevationForTest( int& w, int& h ) const
+{
+	//The buffer ProcessOpenGL's map read: smooth when the blur ran.
+	const PassBuffer& ground = radius > 0 ? smooth : height;
+	w                        = static_cast< int >( ground.GetWidth() );
+	h                        = static_cast< int >( ground.GetHeight() );
+	std::vector< float > texels( static_cast< size_t >( w ) * static_cast< size_t >( h ) );
+	if( texels.empty() )
+		return texels;
+	//One float per texel: every row is a whole number of 4-byte words, so
+	//the default pack alignment holds.
+	Scoped2DTextureBinding texture( ground.TextureID() );
+	glGetTexImage( GL_TEXTURE_2D, 0, GL_RED, GL_FLOAT, texels.data() );
+	return texels;
+}
+
+//---------------------------------------------------------------------------
 FFResult Contour::DeInitGL()
 {
 	heightShader.FreeGLResources();

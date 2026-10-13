@@ -27,6 +27,9 @@
 		cntest --resize                 a resize mid-run changes nothing it
 		                                should not
 		cntest --negative               every check above can FAIL
+		cntest --software ...           any of them on Apple's software
+		                                renderer: what a GitHub macOS runner
+		                                gets, its VM having no accelerated GL
 		cntest --offline                the checks that need no GL
 		cntest --bench                  the render cost
 		cntest --dump-shaders DIR       the exact GLSL the plugin compiles
@@ -180,7 +183,11 @@ double ulpf( double v )
 //---------------------------------------------------------------------------
 // GL plumbing.
 //---------------------------------------------------------------------------
-CGLContextObj createContext()
+/// Accelerated if the machine has it, else whatever 4.1 core context CGL
+/// offers -- on a GitHub macOS runner, whose VM has no accelerated OpenGL,
+/// that is Apple's software renderer. `software` asks for that renderer
+/// outright, so the dev Mac can run what CI runs.
+CGLContextObj createContext( bool software )
 {
 	const CGLPixelFormatAttribute accelerated[] = {
 		kCGLPFAOpenGLProfile, static_cast< CGLPixelFormatAttribute >( kCGLOGLPVersion_GL4_Core ),
@@ -189,8 +196,15 @@ CGLContextObj createContext()
 		kCGLPFAAlphaSize, static_cast< CGLPixelFormatAttribute >( 8 ),
 		static_cast< CGLPixelFormatAttribute >( 0 )
 	};
-	const CGLPixelFormatAttribute software[] = {
+	const CGLPixelFormatAttribute anything[] = {
 		kCGLPFAOpenGLProfile, static_cast< CGLPixelFormatAttribute >( kCGLOGLPVersion_GL4_Core ),
+		kCGLPFAColorSize, static_cast< CGLPixelFormatAttribute >( 24 ),
+		kCGLPFAAlphaSize, static_cast< CGLPixelFormatAttribute >( 8 ),
+		static_cast< CGLPixelFormatAttribute >( 0 )
+	};
+	const CGLPixelFormatAttribute generic[] = {
+		kCGLPFAOpenGLProfile, static_cast< CGLPixelFormatAttribute >( kCGLOGLPVersion_GL4_Core ),
+		kCGLPFARendererID, static_cast< CGLPixelFormatAttribute >( kCGLRendererGenericFloatID ),
 		kCGLPFAColorSize, static_cast< CGLPixelFormatAttribute >( 24 ),
 		kCGLPFAAlphaSize, static_cast< CGLPixelFormatAttribute >( 8 ),
 		static_cast< CGLPixelFormatAttribute >( 0 )
@@ -198,9 +212,14 @@ CGLContextObj createContext()
 
 	CGLPixelFormatObj format = nullptr;
 	GLint formatCount        = 0;
-	if( CGLChoosePixelFormat( accelerated, &format, &formatCount ) != kCGLNoError || format == nullptr )
+	if( software )
 	{
-		if( CGLChoosePixelFormat( software, &format, &formatCount ) != kCGLNoError || format == nullptr )
+		if( CGLChoosePixelFormat( generic, &format, &formatCount ) != kCGLNoError || format == nullptr )
+			return nullptr;
+	}
+	else if( CGLChoosePixelFormat( accelerated, &format, &formatCount ) != kCGLNoError || format == nullptr )
+	{
+		if( CGLChoosePixelFormat( anything, &format, &formatCount ) != kCGLNoError || format == nullptr )
 			return nullptr;
 	}
 
@@ -1560,10 +1579,71 @@ int runAudio( int width, int height, int perturb = 0, bool quiet = false )
 //
 // The same instance handed a differently sized clip mid-run, as a host does:
 //   - the audio drive is carried through it (Onset, loud and steady: the sea
-//     never moves), and
-//   - the first frame after it is byte for byte a fresh instance's render of
-//     the same picture at the new size, with Smooth on -- no buffer of the
-//     old size survives into it.
+//     never moves);
+//   - the elevation the first frame after it drew from is a fresh instance's:
+//     the new size, and every texel within the blur's rounding of it. A
+//     buffer of the old size, or one reallocated and read before it was
+//     written, is wrong by the terrain itself, not by an ulp; and
+//   - the first frame after it is a fresh instance's render of the same
+//     picture at the new size, with Smooth on, to within the freedom GLSL
+//     leaves the map's arithmetic, wherever the two drew from the same
+//     elevation.
+//
+// This check first demanded every value of the two frames equal, and CI's
+// macOS job failed it on about half its runs, by 10,331 to 10,352 of 261,664
+// values. That is the renderer, not the plugin. A GitHub macOS runner is a VM
+// with no accelerated OpenGL, so its context is Apple's software renderer
+// (`--software` here), and on it, on macOS 26.4.1 and in a macOS 26.5 VM:
+//   - every elevation buffer was bit-identical to a fresh instance's in 300
+//     runs out of 300;
+//   - the frames differed anyway in 239 of those 300, by at most 2^-24, in
+//     up to 10,358 values, all in the map's colour arithmetic; and
+//   - one program, drawing identical input with identical uniforms frame
+//     after frame, changed its output by those same bits between frames 34
+//     and 35 of a run, with nothing changed by the plugin or the harness.
+// The resized instance and the fresh one are two compiles of the shaders, and
+// GLSL 4.10 (4.6.1) does not promise two compiles the same bits; this
+// renderer does not even keep one program's. The dev Mac's GPU gave 0
+// differences in 300 runs, which is why nothing caught it here.
+//
+// The elevation's tolerance: a blur pass is a sum of 2R + 1 non-negative
+// taps, each a weight times an elevation, the weights summing to 1. In any
+// order, fused or not, it rounds at most 2R + 1 products and 2R sums, and
+// each rounding moves the result by at most half an ulp of hmax (a pair of
+// taps summed before its weight is up to 2 hmax, but the weight is at most
+// 1/2): ( 2R + 1 ) ulp a pass. The second carries the first's through
+// weights summing to 1, so 2 ( 2R + 1 ) a render, and 4 ( 2R + 1 ) between
+// two. The height pass multiplies by 1 and is exact.
+//
+// The picture's tolerance, for a pixel whose five elevation reads are
+// identical in both. GLSL 4.10 (4.7.1) rounds + - * and comparisons
+// correctly, so a single one of them gives identical results from identical
+// operands; what two compiles may do differently is a / b (2.5 ulp),
+// inversesqrt (2 ulp), what inherits from those (length, normalize,
+// smoothstep), whether a * b + c is fused (every mix), and, with no
+// `precise`, the order of a chain -- every rounding is counted below, so
+// the order does not matter. In e = 2^-24, an ulp being at most 2e of the
+// value, between two renders:
+//   slope    length( g ): the span's division into g 10e, then the dot,
+//            inversesqrt and the reciprocal, 10e each render: 30e relative
+//   d        | h - L | / across: h - L is correctly rounded and k I exact
+//            (I = 1/16), so only the division adds, 10e: 40e relative. A
+//            stroke's coverage is 1-Lipschitz in d and blank beyond hw + 1/2:
+//            40e ( hw + 1/2 ), plus 12e for d -+ 1/2 and their difference
+//   fade     smoothstep( G, 2G, slope ): the slope's 30e of at most 2G is 60e
+//            of t, 12e more for t's own subtraction and division, times the
+//            cubic's steepest 1.5, plus 8e for the cubic: 116e
+//   hs       Z g is 12e relative off, |d hs / d( Z g )| <= sqrt 2, plus 40e
+//            for normalize and the dot
+//   colour   three mixes, 6e each; every colour here is in 0..1, so each
+//            coverage moves the colour by at most its own error
+// At a level's midpoint two renders may round h / I to neighbouring levels.
+// Both are blank there as long as ( I / 2 ) / slope stays beyond the stroke's
+// reach -- a precondition on the steepest ground, checked, with a thousandth
+// to spare for that rounding. Which level is the index can differ too (its
+// test divides by N), so the index and plain lines must be the same float
+// width, as the baseline's are -- also checked. Water is h < S, a
+// comparison: identical h, identical classification.
 //---------------------------------------------------------------------------
 std::vector< float > hills( int width, int height )
 {
@@ -1601,12 +1681,16 @@ int runResize( int width, int height, int perturb = 0, bool quiet = false )
 	}
 	s.resize( w2, h2 );
 	const std::vector< float > second = hills( w2, h2 );
-	std::vector< float > after;
+	std::vector< float > after, afterGround;
+	int aw = 0, ah = 0;
 	for( int f = 20; f < 40; ++f )
 	{
 		s.render( f, second );
 		if( f == 20 )
-			after = s.readBackFloat();
+		{
+			after       = s.readBackFloat();
+			afterGround = s.plugin.ElevationForTest( aw, ah );
+		}
 		worstDrive = std::max( worstDrive, s.plugin.DriveForTest() );
 	}
 	s.end();
@@ -1618,15 +1702,94 @@ int runResize( int width, int height, int perturb = 0, bool quiet = false )
 	fresh.spectrum( loud );
 	fresh.render( 0, second );
 	const std::vector< float > expect = fresh.readBackFloat();
+	int ew = 0, eh = 0;
+	const std::vector< float > expectGround = fresh.plugin.ElevationForTest( ew, eh );
 	fresh.end();
 
-	size_t differ = after.size() == expect.size() ? 0 : after.size();
-	for( size_t i = 0; i < std::min( after.size(), expect.size() ); ++i )
-		differ += after[ i ] != expect[ i ] ? 1 : 0;
 	failures += report( worstDrive == 0.0f, quiet, "resize: %dx%d -> %dx%d mid-run, Onset loud and steady: the drive stays %.3g", width, height, w2, h2,
 	                    static_cast< double >( worstDrive ) );
-	failures += report( differ == 0, quiet, "resize: the first frame after it against a fresh instance at %dx%d: %zu of %zu values differ", w2, h2, differ,
-	                    expect.size() );
+
+	//--- the elevation.
+	const double sigma = stated::sigma( b.smooth );
+	const int R        = static_cast< int >( statedWeights( sigma ).size() ) - 1;
+	double hmax        = 0.0;
+	for( size_t i = 0; i < second.size(); i += 4 )
+		hmax = std::max( hmax, stated::scale( b.heightScale ) * second[ i ] );
+	const double groundTol = R > 0 ? 4.0 * ( 2 * R + 1 ) * ulpf( hmax ) : 0.0;
+	const bool sameSize    = aw == ew && ah == eh && ew == w2 && eh == h2;
+	std::vector< char > moved( static_cast< size_t >( w2 ) * h2, 0 );
+	size_t texelsMoved = 0;
+	double worstGround = 0.0;
+	if( sameSize )
+		for( size_t i = 0; i < expectGround.size(); ++i )
+			if( afterGround[ i ] != expectGround[ i ] )
+			{
+				moved[ i ] = 1;
+				++texelsMoved;
+				worstGround = std::max( worstGround, std::fabs( static_cast< double >( afterGround[ i ] ) - expectGround[ i ] ) );
+			}
+	if( sameSize )
+		failures += report( worstGround <= groundTol, quiet,
+		                    "resize: the elevation the first frame after it drew from, against a fresh instance's at %dx%d: %zu of %zu texels differ, the worst by %.2e (tol %.2e)",
+		                    ew, eh, texelsMoved, expectGround.size(), worstGround, groundTol );
+	else
+		failures += report( false, quiet, "resize: the elevation the first frame after it drew from is %dx%d, a fresh instance's %dx%d", aw, ah, ew, eh );
+
+	//--- the picture, where both drew from the same elevation. The steepest
+	//ground, by the map's own difference: central, one-sided on the edges.
+	auto at      = [ & ]( int x, int y ) { return static_cast< double >( expectGround[ static_cast< size_t >( y ) * ew + x ] ); };
+	double steep = 0.0;
+	for( int y = 0; y < eh; ++y )
+		for( int x = 0; x < ew; ++x )
+		{
+			const int x0 = std::max( x - 1, 0 ), x1 = std::min( x + 1, ew - 1 ), y0 = std::max( y - 1, 0 ), y1 = std::min( y + 1, eh - 1 );
+			const double gx = ( at( x1, y ) - at( x0, y ) ) / std::max( x1 - x0, 1 );
+			const double gy = ( at( x, y1 ) - at( x, y0 ) ) / std::max( y1 - y0, 1 );
+			steep           = std::max( steep, std::sqrt( gx * gx + gy * gy ) );
+		}
+	const double e       = std::ldexp( 1.0, -24 );
+	const double I       = stated::interval( b.interval );
+	const double guard   = stated::guardSlope( stated::scale( b.heightScale ), sigma );
+	const double hwLine  = 0.5 * std::max( stated::lineWidth( b.lineWidth ), stated::indexWidth( b.indexWidth ) );
+	const double hwShore = 0.5 * stated::shoreWidth( b.shoreWidth );
+	const double zg      = stated::zFactor( b.zFactor ) * h2 * steep;
+	auto coverage        = [ & ]( double hw ) { return 116.0 * e + ( 40.0 * e * ( hw + 0.5 ) + 12.0 * e ) + 2.0 * e; };
+	const double tol     = b.hillshade * ( 17.0 * zg + 40.0 ) * e + coverage( hwLine ) + coverage( hwShore ) + 3.0 * 6.0 * e;
+	const bool blank     = std::max( steep, guard ) * ( hwLine + 0.5 ) <= 0.5 * I * ( 1.0 - 1e-3 );
+	const bool oneWidth  = static_cast< float >( 0.5 * stated::lineWidth( b.lineWidth ) ) == static_cast< float >( 0.5 * stated::indexWidth( b.indexWidth ) );
+
+	size_t pixels = 0, differ = 0;
+	double worst  = 0.0;
+	for( int r = 0; r < h2; ++r )
+		for( int x = 0; x < w2; ++x )
+		{
+			//The output is top row first, the elevation bottom row first.
+			const int y = h2 - 1 - r;
+			if( sameSize
+			    && ( moved[ static_cast< size_t >( y ) * w2 + x ] || moved[ static_cast< size_t >( y ) * w2 + std::max( x - 1, 0 ) ]
+			         || moved[ static_cast< size_t >( y ) * w2 + std::min( x + 1, w2 - 1 ) ]
+			         || moved[ static_cast< size_t >( std::max( y - 1, 0 ) ) * w2 + x ]
+			         || moved[ static_cast< size_t >( std::min( y + 1, h2 - 1 ) ) * w2 + x ] ) )
+				continue;
+			++pixels;
+			for( int c = 0; c < 4; ++c )
+			{
+				const size_t i = ( static_cast< size_t >( r ) * w2 + x ) * 4 + c;
+				if( i >= after.size() || i >= expect.size() )
+					continue;
+				differ += after[ i ] != expect[ i ] ? 1 : 0;
+				worst = std::max( worst, std::fabs( static_cast< double >( after[ i ] ) - expect[ i ] ) );
+			}
+		}
+	//With the elevations' sizes apart there is no telling which pixels drew
+	//from the same ground, so every pixel is held to the tolerance.
+	failures += report( blank && oneWidth && worst <= tol && after.size() == expect.size(), quiet,
+	                    "resize: the first frame after it against a fresh instance at %dx%d, over the %zu of %zu pixels %s: %zu of %zu values differ, the worst by %.2e (tol %.2e; the steepest ground, %.4f per px, %s)",
+	                    w2, h2, pixels, static_cast< size_t >( w2 ) * h2, sameSize ? "drawn from the same elevation" : "(the elevations' sizes differ)", differ,
+	                    pixels * 4, worst, tol, steep,
+	                    !oneWidth ? "but index and plain lines differ in width"
+	                    : blank   ? "keeps every level's midpoint blank"
+	                              : "is too steep to keep a level's midpoint blank" );
 	return failures;
 }
 
@@ -2092,6 +2255,7 @@ void usage()
 		"  --names             nothing the host will silently truncate\n"
 		"  --offline           all four, and their negative controls; says loudly what it skipped. For CI.\n"
 		"  --allow-no-gl       with the rendering checks: SKIP loudly, not FAIL, when no GL 4.1 context exists\n"
+		"  --software          render on Apple's software renderer, which is what a GitHub macOS runner gets\n"
 		"\n"
 		"  --bench             time ProcessOpenGL at 720p, 1080p and 4K\n"
 		"  --dump-shaders DIR  write the exact GLSL the plugin compiles\n"
@@ -2116,6 +2280,7 @@ int main( int argc, char** argv )
 	bool wantBench = false;
 	bool wantPipe  = false;
 	bool allowNoGL = false;
+	bool software  = false;
 	std::vector< std::string > settings;
 	std::vector< std::string > checks;
 
@@ -2168,6 +2333,8 @@ int main( int argc, char** argv )
 			wantPipe = true;
 		else if( argument == "--allow-no-gl" )
 			allowNoGL = true;
+		else if( argument == "--software" )
+			software = true;
 		else if( argument == "--offline" )
 			for( const char* m : { "--controls", "--detector", "--clock", "--names", "--negative-offline" } )
 				checks.push_back( m );
@@ -2234,7 +2401,7 @@ int main( int argc, char** argv )
 
 		if( needGL )
 		{
-			CGLContextObj context = createContext();
+			CGLContextObj context = createContext( software );
 			if( context == nullptr && allowNoGL )
 				std::printf( "   SKIP  could not create an OpenGL 4.1 core context, accelerated or software.\n"
 				             "         The rendering checks and their negative controls were NOT run.\n" );
@@ -2245,6 +2412,12 @@ int main( int argc, char** argv )
 			}
 			else
 			{
+				//Which renderer the numbers below came from: CI's is not the
+				//dev Mac's, and the difference has mattered (--resize).
+				const GLubyte* renderer = glGetString( GL_RENDERER );
+				const GLubyte* version  = glGetString( GL_VERSION );
+				std::printf( "GL: %s, %s\n\n", renderer ? reinterpret_cast< const char* >( renderer ) : "unknown",
+				             version ? reinterpret_cast< const char* >( version ) : "unknown" );
 				for( const std::string& check : checks )
 				{
 					if( check == "--count" )
@@ -2279,7 +2452,7 @@ int main( int argc, char** argv )
 		return g_failures == 0 ? 0 : 1;
 	}
 
-	CGLContextObj context = createContext();
+	CGLContextObj context = createContext( software );
 	if( context == nullptr )
 	{
 		std::fprintf( stderr, "could not create an OpenGL context\n" );

@@ -41,6 +41,11 @@
 #                   --resize    a resize mid-run keeps the drive and leaves
 #                               no stale buffer
 #                   --negative  every one of those FAILS on a perturbed model
+#   software      the same checks at 320x180 on Apple's software renderer,
+#                 which is what CI renders on: a GitHub macOS runner is a VM
+#                 with no accelerated OpenGL. Its arithmetic is not the GPU's
+#                 (AGENTS.md, "Two compiles of one shader"), so a check that
+#                 holds only on this Mac's GPU fails here, not on main.
 #   pipe          the fleet's --pipe contract: whole frames only, a cue naming
 #                 no control refused, and exit 1 -- not a silent 0, not a
 #                 SIGPIPE 141 -- on a failed render or a closed stdout.
@@ -154,6 +159,16 @@ for size in 320x180 1280x720; do
 			printf '%s\n' "$out" | sed 's/^/      /'
 		fi
 	done
+done
+
+step "physics at 320x180 on Apple's software renderer (CI's)"
+for check in count spacing width hillshade sea index flat audio resize negative; do
+	if out=$("$CNTEST" --$check --size 320x180 --software 2>&1); then
+		pass "cntest --$check --software: $( printf '%s\n' "$out" | grep -v '^$' | grep -v 'checks,' | tail -1 )"
+	else
+		fail "cntest --$check --software at 320x180"
+		printf '%s\n' "$out" | sed 's/^/      /'
+	fi
 done
 
 #---------------------------------------------------------------------------

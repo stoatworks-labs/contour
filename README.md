@@ -118,7 +118,9 @@ music already playing doesn't flood the map.
 
 `tools/verify.sh` passes on this Mac (M4 Max, macOS 26.4.1) against a fresh universal
 Release build. It runs every rendered check at two rasters, 320×180 and 1280×720, and the
-same checks also pass at 333×187 and 1920×1080. Here's what it shows:
+same checks also pass at 333×187 and 1920×1080. It runs them once more at 320×180 on
+Apple's software renderer, because that's what CI's macOS runner renders on. Here's what
+it shows:
 
 | check | result |
 | --- | --- |
@@ -130,7 +132,7 @@ same checks also pass at 333×187 and 1920×1080. Here's what it shows:
 | `--index` | every Nth contour, and only those, heavy — N = 2, 3, 5 and 10 |
 | `--flat` | a plateau lying **exactly on a contour level**, with a noise floor whose smoothed slope is provably under the guard, draws **no ink at all**; without the guard it is a labyrinth covering a fifth of the plateau |
 | `--audio` | a constant loud spectrum from the first frame leaves the sea still (primed); an onset raises it by the stated half-range on that frame and drains it monotonically; Level puts it at 0.2 + 0.5 √v; the band routing and a 5 s scrub, each within one column of the ramp |
-| `--resize` | a resize mid-run keeps the audio drive, and the first frame after it matches a fresh instance at the new size in every one of 4,157,044 values |
+| `--resize` | a resize mid-run keeps the audio drive; the elevation the first frame after it draws from matches a fresh instance's at the new size texel for texel, and the frame matches a fresh instance's to within float rounding — in every one of 4,157,044 values on this Mac's GPU, and within 2⁻²⁴ (against a derived bound of 2.4e-5) on Apple's software renderer, which doesn't repeat itself bit for bit |
 | offline | the ten control mappings against this README's statement; the detector's gain and its releases measured from its output; a six-day millisecond clock drives the sea as a fresh one does; names within 16 characters |
 | `--negative` | sixteen perturbed models — no division by the slope, no guard, the light from the south, Z Factor ignored, levels half a step off, the interval 3% wide, index contours off by one, the sea too low, the shoreline half a pixel uphill, an unprimed detector, a detector reset on resize, stale buffers after a resize, a float clock — each **fails** its check |
 | mutation | one character of the shipped GLSL (the stroke's coverage, `d - 0.5` → `d - 0.4`) was caught by `--width` and `--sea`, then reverted |

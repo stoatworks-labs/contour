@@ -7,6 +7,7 @@
 #include <FFGLSDK.h>
 
 #include <string>
+#include <vector>
 
 // After FFGLSDK.h, which is where FFUInt32 comes from.
 #include "StoatworksAboutParams.h"
@@ -74,6 +75,12 @@ public:
 	{
 		return seaDrive.Drive();
 	}
+
+	/// The elevation the last frame's map drew from -- the generalised ground,
+	/// or the raw one at Smooth 0 -- read back texel for texel, bottom row
+	/// first, with its size. `cntest --resize` holds it against a fresh
+	/// instance's: it is what a buffer surviving a resize would corrupt.
+	std::vector< float > ElevationForTest( int& width, int& height ) const;
 
 	/// Everything the operator can reach, in the order Resolume shows them.
 	/// SetParamGroup collapses consecutive ids, so each group is a contiguous

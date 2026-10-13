@@ -35,8 +35,8 @@ edge slope or the audio detector.
 
 ## Verify
 - Everything: `tools/verify.sh` (fresh universal build + glslc + a reserved-word scan +
-  the offline checks + every rendered check at 320x180 AND 1280x720 + the --pipe
-  contract + the sweep + the bundle, ~20 s)
+  the offline checks + every rendered check at 320x180 AND 1280x720, and at 320x180 on
+  Apple's software renderer + the --pipe contract + the sweep + the bundle, ~35 s)
 - Contours crossed along a ramp, exactly: `./build/cntest --count`
 - Isolines interval / g apart, whole-pixel and fractional: `./build/cntest --spacing`
 - One pen width on slopes spanning 8:1 (the headline): `./build/cntest --width`
@@ -46,7 +46,12 @@ edge slope or the audio detector.
 - Every Nth contour heavy: `./build/cntest --index`
 - A noisy plateau on a level draws nothing (the guard): `./build/cntest --flat`
 - The sea rises with the music; onset primed: `./build/cntest --audio`
-- A resize keeps the drive, leaves no stale buffer: `./build/cntest --resize`
+- A resize keeps the drive, leaves no stale buffer: `./build/cntest --resize` -- the
+  elevation and then the picture against a fresh instance's, each within a derived
+  rounding bound, never bit for bit (AGENTS.md, "Two compiles of one shader")
+- **What CI renders on:** add `--software` to any rendered check. A GitHub macOS runner
+  is a VM with no accelerated OpenGL, so its context is Apple's software renderer, whose
+  last bits are not this Mac's GPU's
 - The checks can fail: `./build/cntest --negative`; one perturbation verbosely:
   `./build/cntest --width --perturb 1` (bits in `Controls.h`, `contour::perturb`)
 - No GL (what CI runs): `./build/cntest --offline` = `--controls --detector --clock --names`

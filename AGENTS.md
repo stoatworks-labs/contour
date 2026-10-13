@@ -200,6 +200,36 @@ No check depends on the default.
   Scale** — every check fed the red channel at scale 1. `--sea` now reads each Rec. 709
   weight and Invert back through the shoreline, `--count` has ramps at ×1.5 and ×0.5.
 
+### ☠️ Two compiles of one shader are not one function
+
+`--resize` first held the frame after a resize to a fresh instance's render **value for
+value**. CI's macOS job failed it on about half its runs from 2026-09-25 (4441145,
+7959725, 4bf44c4, then 4d9c53d, 0a34978 and 0c40719 — docs-only commits among them), by
+10,331 to 10,352 of 261,664 values; the dev Mac never failed it. A GitHub macOS runner is
+a VM with no accelerated OpenGL, so the harness's fallback context there is **Apple
+Software Renderer** — the same context a tart VM on the dev Mac gets, and what
+`cntest --software` asks for. On it (macOS 26.4.1 on the host, 26.5 in a VM):
+
+- the elevation the map drew from was bit-identical to a fresh instance's in 300 runs of
+  300 — all three buffers: no stale buffer, nothing unwritten, nothing carried;
+- the frames differed anyway in 239 of the 300, by at most 2⁻²⁴, in up to 10,358
+  values, and only in the map's colour arithmetic: with Hillshade and Smooth off, only
+  the shoreline's blue channel moved, the `mix` toward 0.4 × Water Colour;
+- one program drawing identical input with identical uniforms changed its output by
+  those bits between frames 34 and 35 of a run, with nothing changed by the plugin or
+  the harness. Sleeping between frames did not settle it.
+
+GLSL 4.10 §4.6.1 does not promise two compiles of a shader the same bits, and this
+renderer does not even keep one program's. The dev Mac's GPU gave 0 differences in 300
+runs, which is why nothing caught it here. Not a plugin bug, and not visible in Resolume:
+2⁻²⁴ is far below any output format's step, and a host renders on its GPU.
+
+`--resize` now holds the elevation the map drew from (`Contour::ElevationForTest`, a test
+hook) to a fresh instance's within the blur's rounding, and the picture within the
+freedom GLSL leaves the map's arithmetic wherever both drew from the same elevation —
+both derived at the check — and `verify.sh` runs every rendered check at 320×180 on the
+software renderer, so a check that holds only on this Mac's GPU fails here, not on main.
+
 ### Inherited from the fleet, and all still true here
 
 `ScopedFBOBinding` does not restore the viewport (the host's is captured first and
@@ -223,7 +253,8 @@ exit 1, not 141, and verify.sh tests it.
 ## Would this hold on another rasteriser, at another raster?
 
 One line per check. Every tolerance is derived, not fitted; every check ran at 320×180
-and 1280×720 in `verify.sh`, and at 333×187 and 1920×1080 by hand.
+and 1280×720 in `verify.sh`, at 320×180 on Apple's software renderer (CI's) there too,
+and at 333×187 and 1920×1080 by hand.
 
 What makes them rasteriser-proof by construction: **every coordinate is an integer**
 (`gl_FragCoord` and the viewport, never an interpolated uv), **every read is
@@ -231,9 +262,11 @@ What makes them rasteriser-proof by construction: **every coordinate is an integ
 double** and handed over as a float uniform, and **the input is a float texture**, so
 the elevation the shader sees is the float the harness wrote. What a driver can still
 do differently is arithmetic: GLSL 4.10 §8.2 bounds it, and each tolerance carries its
-share. Deliberately not relied on: `mix( a, b, 1 ) == b` (the hillshade tolerance
-allows the x + a (y − x) form's rounding), exact cancellation of two computed
-elevations, and `pow` anywhere in a check's path.
+share. It may do it differently in two compiles of one shader, and Apple's software
+renderer in two draws of one program, so no check holds two renders to the same bits
+(`--resize` did; see the traps). Deliberately not relied on: `mix( a, b, 1 ) == b` (the
+hillshade tolerance allows the x + a (y − x) form's rounding), exact cancellation of two
+computed elevations, and `pow` anywhere in a check's path.
 
 | check | what it measures | tolerance and where it comes from | raster dependence |
 | --- | --- | --- | --- |
@@ -248,7 +281,7 @@ elevations, and `pow` anywhere in a check's path.
 | `--index` | the heavy strokes' level numbers | **exact set equality**, strokes classified by mass against the midpoint of 1.2 and 3 px (errors are ~1e-5) | strokes whose reach includes the first or last two columns are excluded on both sides |
 | `--flat` | ink on a noisy plateau lying on a level | **exactly 0**: the noise (±0.1 code value) is chosen so the smoothed slope is provably under G — ½ a Σ\|w_{k+1} − w_{k−1}\| √2 from the stated kernel — and smoothstep is exactly 0 below its edge | per pixel, so raster-free; the plateau is the frame's left half |
 | `--audio` | the waterline's column on a 0..1 ramp | **one column** (1/W of elevation): the midpoint of the column interval is within half of it | 1/W: 3.1e-3 at 320, 7.8e-4 at 1280 |
-| `--resize` | the drive through a resize; the frame after it against a fresh instance | drive exactly 0; **every value equal** | resizes to 1.5 W + 1 × 0.75 H + 1, a different aspect, at any raster |
+| `--resize` | the drive through a resize; the elevation the frame after it drew from, then the frame, against a fresh instance | drive exactly 0; the elevation's size exact and its texels within 4 (2R + 1) ulp(h_max) = 3.1e-6 (each blur pass, in any order, fused or not, is within 2R + 1 ulp of exact); the frame within 2.4e-5 — GLSL's freedom in a / b, inversesqrt and whether a mix is fused, carried through the slope, the strokes' coverage, the fade and the hillshade, term by term at the check — at every pixel whose five elevation reads are identical, with the steepest ground keeping a level's midpoint blank and index lines the plain lines' width | resizes to 1.5 W + 1 × 0.75 H + 1, a different aspect, at any raster; Z H \|g\|max, and so the tolerance, is the same at both verify rasters |
 | `--controls` | ten mappings at 21 points, the guard, the defaults | 1e-12 relative (two statements of one definition in double); the defaults exact | none (no GL) |
 | `--detector` | SeaDrive: primed, saturation, the releases | the Onset release τ from two late frames' ratio, to τ 2⁻²³ / \|ln r\| (the drive is a float); Level to 1e-6 | none (no GL) |
 | `--clock` | a six-day millisecond clock against a fresh seconds one, 3,000 frames | 1e-3: a double at 1.02e9 s resolves 1.2e-7 s, 2.4e-6 relative per release factor, compounded over the stimulus's runs; a float clock resolves 64 s and misses by 0.31 | none (no GL) |
@@ -256,9 +289,10 @@ elevations, and `pow` anywhere in a check's path.
 What might still differ on another rasteriser: a driver whose `smoothstep` is not
 exactly 0 below its first edge would put ink on the flat plateau (the spec's formula
 clamps to 0 before the polynomial, so it would be non-conforming). A software context
-is a different compiler for the same GLSL; `check-shaders.sh` covers syntax on the
-GL-less runner and the rendered checks run with `--allow-no-gl` so a runner without a
-context skips loudly.
+is a different compiler for the same GLSL, and CI's macOS runner has one: Apple Software
+Renderer, which every rendered check passes on at 320×180 (`--software`; `verify.sh`
+runs it). `check-shaders.sh` covers syntax wherever there is no context, and the rendered
+checks run with `--allow-no-gl` so a runner without one skips loudly.
 
 ### The negative controls
 
@@ -279,8 +313,8 @@ harness's expectation.
 | water a quarter interval low | `--sea`: 1,356 pixels misclassified; `--audio`: the waterline 0.017 low |
 | shoreline half a pixel uphill | `--sea`: every shoreline 0.49–0.50 px off |
 | onset detector unprimed | `--audio`: the sea floods to 0.70 on frame 0 and after the scrub |
-| detector reset, unprimed, on a resize | `--resize`: drive 1 after the resize |
-| height buffers kept at the old size | `--resize`: 172,023 of 261,664 values differ |
+| detector reset, unprimed, on a resize | `--resize`: drive 1 after the resize; the frame 149,501 of 261,664 values off, by up to 1.0 |
+| height buffers kept at the old size | `--resize`: the elevation 320×180 against 481×136; the frame 172,023 of 261,664 values off, by up to 1.0 |
 | offline: unprimed | `--detector`: drive 1 from a constant spectrum, and after a jump |
 | offline: the clock kept in float | `--clock`: drives differ by 0.31 |
 
@@ -376,7 +410,12 @@ by hand.
   the record.
 - **Audio.** Primed, the onset's peak and drain, Level at √v, the bands and a scrub,
   each within one column.
-- **Resize.** The drive carried; 0 of 4,157,044 values differ from a fresh instance.
+- **Resize.** The drive carried; the elevation the first frame after it drew from is
+  bit-identical to a fresh instance's, and 0 of 4,157,044 values differ, on this Mac's
+  GPU. On Apple's software renderer (CI's; 2026-10-13): the elevation bit-identical and
+  the frame within 2⁻²⁴ of a fresh instance's (bound 2.45e-5) in 200 runs of 200 at
+  320×180, 20 of 20 at 1280×720 and 60 of 60 in a macOS 26.5 VM — runs the old
+  every-value check fails 147, 1 and 49 times.
 - **Offline.** Mappings to 0 relative; the detector's releases measured; the six-day
   clock within 6e-8.
 - **Negative controls.** All sixteen fail their check.
